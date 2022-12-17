@@ -26,3 +26,8 @@ val Typography = Typography(
     )
     */
 )
+
+val PasscodeKeyButtonStyle = TextStyle(
+    fontWeight = FontWeight.Bold,
+    fontSize = 24.sp
+)
