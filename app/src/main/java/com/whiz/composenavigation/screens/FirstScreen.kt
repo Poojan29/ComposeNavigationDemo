@@ -1,5 +1,8 @@
 package com.whiz.composenavigation.screens
 
+import android.content.Context
+import android.content.SharedPreferences
+import android.util.Log
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.*
@@ -14,22 +17,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.whiz.composenavigation.R
 import com.whiz.composenavigation.ui.theme.PasscodeKeyButtonStyle
+import com.whiz.composenavigation.utils.Constant
 import com.whiz.composenavigation.utils.UIState
 import com.whiz.composenavigation.viewmodel.MainViewModel
 
 @Composable
 fun FirstScreen(
     popToSecondScreen: () -> Unit,
-    viewModel: MainViewModel
+    viewModel: MainViewModel,
+    context: Context
 ) {
     val activeStep by viewModel.activeStep.collectAsState()
     val snackBarHostState = remember { SnackbarHostState() }
+
+    val pref = context.applicationContext.getSharedPreferences(
+        Constant.SHARED_PREF_NAME, Context.MODE_PRIVATE
+    )
 
     Column(
         modifier = Modifier
@@ -45,7 +55,6 @@ fun FirstScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Toolbar(activeStep = activeStep)
         Spacer(modifier = Modifier.height(6.dp))
         Headers(activeStep = activeStep)
         Spacer(modifier = Modifier.height(6.dp))
@@ -53,7 +62,7 @@ fun FirstScreen(
             modifier = Modifier.weight(1.0F),
             contentAlignment = Alignment.Center
         ) {
-            PasscodeView(viewModel = viewModel, popToSecondScreen = popToSecondScreen)
+            PasscodeView(viewModel = viewModel, popToSecondScreen = popToSecondScreen, pref = pref)
         }
         Spacer(modifier = Modifier.height(6.dp))
         PasscodeKeys(
@@ -68,55 +77,6 @@ fun FirstScreen(
     }
 
     SnackbarHost(hostState = snackBarHostState)
-}
-
-@Composable
-private fun Toolbar(activeStep: MainViewModel.Step) {
-
-    Box(modifier = Modifier.fillMaxWidth()) {
-        StepIndicator(
-            modifier = Modifier.align(alignment = Alignment.Center),
-            activeStep = activeStep
-        )
-    }
-}
-
-@Composable
-fun StepIndicator(
-    modifier: Modifier = Modifier,
-    activeStep: MainViewModel.Step
-) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(
-            space = 6.dp,
-            alignment = Alignment.CenterHorizontally
-        )
-    ) {
-        repeat(MainViewModel.STEPS_COUNT) { step ->
-            val isActiveStep = step <= activeStep.index
-            val stepColor = animateColorAsState(
-                if (isActiveStep) {
-                    MaterialTheme.colors.primary
-                } else {
-                    MaterialTheme.colors.secondary
-                }
-            )
-
-            Box(
-                modifier = Modifier
-                    .size(
-                        width = 72.dp,
-                        height = 4.dp
-                    )
-                    .background(
-                        color = stepColor.value,
-                        shape = MaterialTheme.shapes.medium
-                    )
-            )
-        }
-    }
 }
 
 @Composable
@@ -150,7 +110,8 @@ fun Headers(
 private fun PasscodeView(
     modifier: Modifier = Modifier,
     viewModel: MainViewModel,
-    popToSecondScreen: () -> Unit
+    popToSecondScreen: () -> Unit,
+    pref: SharedPreferences,
 ) {
     val filledDots by viewModel.filledDots.collectAsState()
     val passcodeRejectedDialogVisible = remember {
@@ -158,9 +119,23 @@ private fun PasscodeView(
     }
 
     if (viewModel.uiState.value == UIState.PassCodeError) {
+
+        pref.edit().putBoolean(Constant.IS_PASSCODE_SET, false).apply()
+        pref.edit().putBoolean(Constant.IS_ENTER_FIRST_TIME, true).apply()
+
+        Log.d("TAGG", pref.getBoolean(Constant.IS_PASSCODE_SET, false).toString())
+
         passcodeRejectedDialogVisible.value = true
+
     } else if (viewModel.uiState.value == UIState.PassCodeConfirm) {
+
+        pref.edit().putBoolean(Constant.IS_PASSCODE_SET, true).apply()
+        pref.edit().putBoolean(Constant.IS_ENTER_FIRST_TIME, false).apply()
+
+        Log.d("TAGG", pref.getBoolean(Constant.IS_PASSCODE_SET, false).toString())
+
         popToSecondScreen.invoke()
+
     }
 
     PasscodeRejectedDialog(
@@ -213,7 +188,7 @@ fun PasscodeRejectedDialog(
     if (visible) {
         AlertDialog(
             shape = MaterialTheme.shapes.small,
-            title = { Text(text = "Passcodes do not match!") },
+            title = { Text(text = "Please enter valid passcode.") },
             confirmButton = {
                 TextButton(onClick = onDismiss) {
                     Text(text = "Try again")

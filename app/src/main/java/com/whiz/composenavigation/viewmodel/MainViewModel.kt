@@ -1,15 +1,30 @@
 package com.whiz.composenavigation.viewmodel
 
+import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.whiz.composenavigation.utils.Constant
 import com.whiz.composenavigation.utils.UIState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class MainViewModel : ViewModel() {
+class MainViewModel(
+    context: Context,
+) : ViewModel() {
+
+    val pref = context.getSharedPreferences(Constant.SHARED_PREF_NAME, Context.MODE_PRIVATE)
+
+    private var isPassSet: Boolean = pref.getBoolean(Constant.IS_PASSCODE_SET, false)
+    var passcode = pref.getString(Constant.PASSCODE, "")
+
+    init {
+        Log.d("YES", isPassSet.toString())
+        Log.d("Yes", passcode.toString())
+    }
 
     private val _activeStep = MutableStateFlow(Step.Create)
     private val _filledDots = MutableStateFlow(0)
@@ -60,10 +75,19 @@ class MainViewModel : ViewModel() {
 
         if (_filledDots.value == PASSCODE_LENGTH) {
             if (_activeStep.value == Step.Create) {
-                emitActiveStep(Step.Confirm)
-                emitFilledDots(0)
+                if (!isPassSet) {
+                    emitActiveStep(Step.Confirm)
+                    emitFilledDots(0)
+                } else {
+                    if (createPasscode.toString() == passcode) {
+                        _uiState = mutableStateOf(UIState.PassCodeConfirm)
+                    } else {
+                        _uiState = mutableStateOf(UIState.PassCodeError)
+                    }
+                }
             } else {
                 _uiState = if (createPasscode.toString() == confirmPasscode.toString()) {
+                    pref.edit().putString(Constant.PASSCODE, confirmPasscode.toString()).apply()
                     resetData()
                     mutableStateOf(UIState.PassCodeConfirm)
                 } else {
@@ -103,14 +127,12 @@ class MainViewModel : ViewModel() {
 
     fun restart() = resetData()
 
-    enum class Step(var index: Int) {
-        Create(0),
-        Confirm(1)
+    enum class Step {
+        Create,
+        Confirm
     }
 
     companion object {
-
-        const val STEPS_COUNT = 2
         const val PASSCODE_LENGTH = 4
     }
 }

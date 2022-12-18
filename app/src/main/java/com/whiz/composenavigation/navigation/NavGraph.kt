@@ -1,5 +1,6 @@
 package com.whiz.composenavigation.navigation
 
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -10,23 +11,24 @@ import com.whiz.composenavigation.screens.SecondScreen
 import com.whiz.composenavigation.viewmodel.MainViewModel
 
 @Composable
-fun NavGraph(navController: NavHostController) {
+fun NavGraph(navController: NavHostController, context: Context) {
 
     NavHost(
         navController = navController,
         startDestination = "first"
     ) {
-        addFirstScreen(navController, this)
+        addFirstScreen(navController, this, context)
 
         addSecondScreen(navController, this)
     }
 }
 
-fun addFirstScreen(navController: NavHostController, navGraphBuilder: NavGraphBuilder) {
+fun addFirstScreen(navController: NavHostController, navGraphBuilder: NavGraphBuilder, context: Context) {
     navGraphBuilder.composable("first") {
         FirstScreen(
             popToSecondScreen = { navController.navigate("second") },
-            viewModel = MainViewModel()
+            viewModel = MainViewModel(context = context),
+            context = context
         )
     }
 }
